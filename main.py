@@ -1,35 +1,48 @@
 #!/usr/bin/env python3
-"""news-image-20261119: sum up the world news of Thursday 19 November 2026.
+"""news-image-20261119: the front page of Thursday 19 November 2026.
 
-The entry is the front-page image entry.png that sits next to this file
-(it was drawn during the build session: lead story Trump-Xi-Putin
-trilateral summit in Shenzhen, the ICJ verdict on Myanmar's Rohingya
-genocide case, Ukraine striking the Kerch Bridge again, Cyclone Akvan
-closing in, a Van Gogh selling for a record $190.4m, plus GTA VI's
-global rollout, Voyager 1 reaching one light-day, the EU's 45bn euro
-Ukraine loan and Peltola winning Alaska in the strip).
+The repository holds the finished front page as entry.png. It was drawn
+during the build session, pixel by pixel, from the day's reporting: the
+Trump-Xi-Putin summit in Shenzhen leads the page, with the World Court's
+Myanmar verdict, another strike on the Kerch Bridge, Cyclone Akvan
+bearing down on the Andhra coast, and a Van Gogh changing hands for a
+record price.
 
-Running this program copies that image, unchanged, into the folder the
-harness provides ($MAKEFUN_OUTPUT_DIR, or /output when unset). Standard
-library only, no network, no randomness: every run writes identical bytes.
+This program puts an unchanged copy of that image where the harness
+expects it, then checks the copy byte for byte. Standard library only:
+no network, no randomness, no arguments. Run it twice and both runs
+write the same bytes.
 """
 
-import os
-import shutil
-from pathlib import Path
+import hashlib
+import pathlib
+from os import environ
+
+
+def load_image():
+    """Read the front page from beside this file and return its bytes."""
+    folder = pathlib.Path(__file__).resolve().parent
+    return (folder / "entry.png").read_bytes()
+
+
+def place_image(image):
+    """Write the image into the harness output folder and verify it."""
+    folder = pathlib.Path(environ.get("MAKEFUN_OUTPUT_DIR") or "/output")
+    folder.mkdir(parents=True, exist_ok=True)
+    destination = folder / "entry.png"
+    destination.write_bytes(image)
+    copied = destination.read_bytes()
+    if hashlib.sha256(copied).digest() != hashlib.sha256(image).digest():
+        raise SystemExit("entry.png copy differs from the source image")
+    return len(copied)
 
 
 def main():
-    here = Path(__file__).resolve().parent
-    out_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    src = here / "entry.png"
-    dst = out_dir / "entry.png"
-    shutil.copyfile(src, dst)
-    # Guard the gate's byte-identical rule: the copy must match the source.
-    if dst.stat().st_size != src.stat().st_size:
+    image = load_image()
+    size = place_image(image)
+    if size != len(image):
         raise SystemExit("entry.png copy size mismatch")
+    print(f"wrote entry.png ({size} bytes)")
 
 
-if __name__ == "__main__":
-    main()
+main()
